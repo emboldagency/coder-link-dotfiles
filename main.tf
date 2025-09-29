@@ -7,27 +7,6 @@ terraform {
 }
 
 data "coder_parameter" "dotfiles_mode" {
-  name        = "Dotfiles Mode"
-  description = "How should embedded dotfiles be applied?"
-  type        = "string"
-  default     = "symlink"
-  mutable     = true
-  option {
-    name  = "Symlink"
-    value = "symlink"
-  }
-  option {
-    name  = "Copy"
-    value = "copy"
-  }
-  option {
-    name  = "None"
-    value = "none"
-  }
-}
-
-# Create a workspace parameter only if the caller did not pass an explicit mode.
-data "coder_parameter" "dotfiles_mode_dynamic" {
   count       = var.mode == null ? 1 : 0
   name        = "Dotfiles Mode"
   description = "How should embedded dotfiles be applied?"
@@ -48,6 +27,7 @@ data "coder_parameter" "dotfiles_mode_dynamic" {
   }
 }
 
+
 resource "coder_script" "link_dotfiles" {
   agent_id           = var.agent_id
   script             = templatefile("${path.module}/run.sh", { DOTFILES_URIS = var.dotfiles_uri, MODE = local.resolved_mode })
@@ -65,7 +45,7 @@ output "mode" {
 locals {
   resolved_mode = coalesce(
     var.mode,
-    try(data.coder_parameter.dotfiles_mode_dynamic[0].value, data.coder_parameter.dotfiles_mode.value),
+    try(data.coder_parameter.dotfiles_mode[0].value, ""),
     ""
   )
 }
