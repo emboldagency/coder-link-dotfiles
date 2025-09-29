@@ -21,7 +21,7 @@ module "dotfiles" {
 }
 
 module "link_dotfiles" {
-  source  = "git::https://github.com/embold/coder-link-dotfiles.git?ref=v1.0.0"
+  source  = "git::https://github.com/emboldagency/coder-link-dotfiles.git?ref=v1.0.0"
   count    = data.coder_workspace.me.start_count
   agent_id = coder_agent.example.id
   dotfiles_uri = module.dotfiles[0].dotfiles_uri
