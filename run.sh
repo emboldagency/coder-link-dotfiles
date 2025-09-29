@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Rendered by Terraform. DOTFILES_URIS will be a space-separated list of URIs.
-DOTFILES_URIS="$${DOTFILES_URIS}"
-MODE="$${MODE}"
+DOTFILES_URIS="${DOTFILES_URIS}"
+MODE="${MODE}"
 
 if [ -z "$DOTFILES_URIS" ]; then
   echo "No dotfiles URIs provided; nothing to do"
