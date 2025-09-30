@@ -46,9 +46,12 @@ locals {
   # Prefer the first non-empty value among the explicit var, the workspace
   # parameter (if present), or empty string. Use trimspace checks because
   # coalesce() treats empty string as a valid value which is undesirable here.
+  # Avoid calling coalesce() when var.mode is null which can lead to an
+  # error inside downstream 'trimspace' calls. Prefer explicit null checks
+  # and trimspace the first non-empty string value.
   resolved_mode = (
-    trimspace(coalesce(var.mode, "")) != "" ? trimspace(var.mode) : (
-      trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) != "" ? trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) : ""
+    var.mode != null && trimspace(var.mode) != "" ? trimspace(var.mode) : (
+      (try(data.coder_parameter.dotfiles_mode[0].value, "") != "" && trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) != "") ? trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) : ""
     )
   )
 }
@@ -67,8 +70,8 @@ locals {
   # strings. Use trimspace() and conditional checks to return the first
   # non-empty value or empty string when none provided.
   resolved_packages = (
-    trimspace(coalesce(var.packages, "")) != "" ? trimspace(var.packages) : (
-      trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) != "" ? trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) : ""
+    var.packages != null && trimspace(var.packages) != "" ? trimspace(var.packages) : (
+      (try(data.coder_parameter.dotfiles_packages[0].value, "") != "" && trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) != "") ? trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) : ""
     )
   )
 }
