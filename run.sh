@@ -12,6 +12,21 @@ MODE="${MODE}"
 # conventional package dirs (dotfiles/ or home/).
 PACKAGES="${PACKAGES}"
 
+# If DOTFILES_URIS is empty, try a conventional dotfilesurl file which may
+# contain a single URI (this exists in some images as /home/embold/dotfilesurl).
+if [ -z "$DOTFILES_URIS" ]; then
+  if [ -f /home/embold/dotfilesurl ]; then
+    DOTFILES_URIS=$(cat /home/embold/dotfilesurl | tr -d '\r\n')
+    echo "Using DOTFILES_URIS from /home/embold/dotfilesurl: $DOTFILES_URIS"
+  elif [ -f ./dotfilesurl ]; then
+    DOTFILES_URIS=$(cat ./dotfilesurl | tr -d '\r\n')
+    echo "Using DOTFILES_URIS from ./dotfilesurl: $DOTFILES_URIS"
+  fi
+fi
+
+# Ensure base .dotfiles dir exists so symlink/copy ops don't fail
+mkdir -p /home/embold/.dotfiles
+
 if [ -z "$DOTFILES_URIS" ]; then
   echo "No dotfiles URIs provided; nothing to do"
   exit 0
