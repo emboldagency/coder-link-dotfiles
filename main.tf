@@ -32,7 +32,7 @@ resource "coder_script" "link_dotfiles" {
   agent_id           = var.agent_id
   script             = templatefile("${path.module}/run.sh", { DOTFILES_URIS = var.dotfiles_uri, MODE = local.resolved_mode, PACKAGES = local.resolved_packages, PRESERVE_STASH = var.stow_preserve_changes, WAIT_SECONDS = var.wait_seconds })
   display_name       = "Link Dotfiles"
-  icon               = "/icon/link.svg"
+  icon               = "/icon/dotfiles.svg"
   run_on_start       = true
   start_blocks_login = false
 }
