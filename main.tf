@@ -30,7 +30,7 @@ data "coder_parameter" "dotfiles_mode" {
 
 resource "coder_script" "link_dotfiles" {
   agent_id           = var.agent_id
-  script             = templatefile("${path.module}/run.sh", { DOTFILES_URIS = var.dotfiles_uri, MODE = local.resolved_mode, PACKAGES = local.resolved_packages })
+  script             = templatefile("${path.module}/run.sh", { DOTFILES_URIS = var.dotfiles_uri, MODE = local.resolved_mode, PACKAGES = local.resolved_packages, PRESERVE_STASH = var.stow_preserve_changes })
   display_name       = "Link Dotfiles"
   icon               = "/icon/link.svg"
   run_on_start       = true
@@ -43,10 +43,13 @@ output "mode" {
 }
 
 locals {
-  resolved_mode = coalesce(
-    var.mode,
-    try(data.coder_parameter.dotfiles_mode[0].value, ""),
-    ""
+  # Prefer the first non-empty value among the explicit var, the workspace
+  # parameter (if present), or empty string. Use trimspace checks because
+  # coalesce() treats empty string as a valid value which is undesirable here.
+  resolved_mode = (
+    trimspace(coalesce(var.mode, "")) != "" ? trimspace(var.mode) : (
+      trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) != "" ? trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) : ""
+    )
   )
 }
 
@@ -60,16 +63,24 @@ data "coder_parameter" "dotfiles_packages" {
 }
 
 locals {
-  resolved_packages = coalesce(
-    var.packages,
-    try(data.coder_parameter.dotfiles_packages[0].value, ""),
-    ""
+  # coalesce() treats empty string as a value; we need to prefer non-empty
+  # strings. Use trimspace() and conditional checks to return the first
+  # non-empty value or empty string when none provided.
+  resolved_packages = (
+    trimspace(coalesce(var.packages, "")) != "" ? trimspace(var.packages) : (
+      trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) != "" ? trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) : ""
+    )
   )
 }
 
 output "packages" {
   description = "Resolved PACKAGES value used by the module"
   value       = local.resolved_packages
+}
+
+output "stow_preserve_changes" {
+  description = "Whether the module will stash repo changes after stow adoption"
+  value       = var.stow_preserve_changes
 }
 
 output "uri_accepted" {

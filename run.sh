@@ -111,9 +111,13 @@ for uri in $DOTFILES_URIS; do
           if [ -d "$stow_target_dir/.git" ]; then
             changed=$(cd "$stow_target_dir" && git status --porcelain --untracked-files=all 2>/dev/null || true)
             if [ -n "$changed" ]; then
-              stash_name="stow-adopt-$(date -u +%Y%m%dT%H%M%SZ)"
-              echo "Detected git repo in $stow_target_dir — stashing changes to '$stash_name' to preserve local edits"
-              (cd "$stow_target_dir" && git stash push --include-untracked -m "$stash_name") || true
+              if [ "${PRESERVE_STASH}" = "true" ]; then
+                stash_name="stow-adopt-$(date -u +%Y%m%dT%H%M%SZ)"
+                echo "Detected git repo in $stow_target_dir — stashing changes to '$stash_name' to preserve local edits"
+                (cd "$stow_target_dir" && git stash push --include-untracked -m "$stash_name") || true
+              else
+                echo "Detected changes in $stow_target_dir but PRESERVE_STASH is false; not stashing"
+              fi
             else
               echo "No working-tree changes detected in $stow_target_dir"
             fi
