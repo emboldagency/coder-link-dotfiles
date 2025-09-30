@@ -13,11 +13,11 @@ MODE="${MODE}"
 PACKAGES="${PACKAGES}"
 
 # If DOTFILES_URIS is empty, try a conventional dotfilesurl file which may
-# contain a single URI (this exists in some images as /home/embold/dotfilesurl).
+# contain a single URI (this exists in some images as ~/.config/coderv2/dotfilesurl).
 if [ -z "$DOTFILES_URIS" ]; then
-  if [ -f /home/embold/dotfilesurl ]; then
-    DOTFILES_URIS=$(cat /home/embold/dotfilesurl | tr -d '\r\n')
-    echo "Using DOTFILES_URIS from /home/embold/dotfilesurl: $DOTFILES_URIS"
+  if [ -f ~/.config/coderv2/dotfilesurl ]; then
+    DOTFILES_URIS=$(cat ~/.config/coderv2/dotfilesurl | tr -d '\r\n')
+    echo "Using DOTFILES_URIS from ~/.config/coderv2/dotfilesurl: $DOTFILES_URIS"
   elif [ -f ./dotfilesurl ]; then
     DOTFILES_URIS=$(cat ./dotfilesurl | tr -d '\r\n')
     echo "Using DOTFILES_URIS from ./dotfilesurl: $DOTFILES_URIS"
@@ -25,7 +25,7 @@ if [ -z "$DOTFILES_URIS" ]; then
 fi
 
 # Ensure base .dotfiles dir exists so symlink/copy ops don't fail
-mkdir -p /home/embold/.dotfiles
+mkdir -p ~/.dotfiles
 
 if [ -z "$DOTFILES_URIS" ]; then
   echo "No dotfiles URIs provided; nothing to do"
@@ -73,10 +73,10 @@ for uri in $DOTFILES_URIS; do
     path="$uri"
   fi
 
-  # For simplicity assume dotfiles are placed under /home/embold/.dotfiles/<basename>
+  # For simplicity assume dotfiles are placed under ~/.dotfiles/<basename>
   name=$(basename "$path")
   src="$path"
-  dest="/home/embold/.dotfiles/$name"
+  dest="~/.dotfiles/$name"
 
   # Build a package_list value. If PACKAGES is provided use it,
   # otherwise autodetect common package dirs (dotfiles/ or home/).
@@ -116,10 +116,10 @@ for uri in $DOTFILES_URIS; do
             if [[ "$target_spec" = /* ]]; then
               target="$target_spec"
             else
-              target="/home/embold/$target_spec"
+              target="~/$target_spec"
             fi
           else
-            target="/home/embold"
+            target="~"
           fi
           echo "Stowing package '$origin' -> target '$target' (using --adopt to convert existing files)"
           (cd "$stow_target_dir" && stow -v --adopt -t "$target" "$origin") || true
@@ -139,7 +139,7 @@ for uri in $DOTFILES_URIS; do
           fi
         done
       elif [ -n "$package_list" ]; then
-        mkdir -p "/home/embold/.dotfiles/$name"
+        mkdir -p "~/.dotfiles/$name"
         for origin in $package_list; do
           if [[ "$origin" == *:* ]]; then
             origin_dir="$${origin%%:*}"
@@ -147,7 +147,7 @@ for uri in $DOTFILES_URIS; do
             origin_dir="$origin"
           fi
           src_pkg="$path/$origin_dir"
-          dest_pkg="/home/embold/.dotfiles/$name/$origin_dir"
+          dest_pkg="~/.dotfiles/$name/$origin_dir"
           apply_symlink "$src_pkg" "$dest_pkg" || true
         done
       else

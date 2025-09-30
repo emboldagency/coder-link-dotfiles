@@ -10,7 +10,7 @@ Coder module that applies dotfiles that were installed by the community `dotfile
 - `mode` (string, optional) - one of `symlink`, `copy`, or `none`. If unset, the module will create a `coder_parameter` named `Dotfiles Mode` so end-users can choose the behavior at workspace runtime.
 - `packages` (string, optional) - optional space-separated list of package specifiers for `stow` or manual handling. Each item may be:
   - `origin` (e.g. `dotfiles`) — a directory inside the dotfiles repo
-  - `origin:target` (e.g. `home:dotfiles` or `dotfiles:/etc/skel`) where `target` is absolute or relative to `/home/embold`
+  - `origin:target` (e.g. `home:dotfiles` or `dotfiles:/etc/skel`) where `target` is absolute or relative to `~`
   If `packages` is omitted the module will auto-detect `dotfiles/` and/or `home/` subdirs in the repo. When omitted the module also exposes a workspace parameter named `Dotfiles Packages` so admins can set packages at runtime.
 
 ## Usage
@@ -25,7 +25,7 @@ module "dotfiles" {
 }
 
 module "link_dotfiles" {
-  source  = "git::https://github.com/emboldagency/coder-link-dotfiles.git?ref=v1.0.4"
+  source  = "git::https://github.com/emboldagency/coder-link-dotfiles.git?ref=v1.0.5"
   count    = data.coder_workspace.me.start_count
   agent_id = coder_agent.example.id
   dotfiles_uri = module.dotfiles[0].dotfiles_uri
@@ -45,7 +45,7 @@ module "link_dotfiles" {
 - Stow behavior:
   - When `MODE=symlink` and GNU `stow` is available in the image, the module will use `stow --adopt` to adopt existing files into the package and create symlinks.
   - After `stow --adopt`, the module will stash any uncommitted changes created by adoption into a named stash (e.g. `stow-adopt-20250929T153045Z`). This preserves local edits instead of discarding them. To inspect or restore changes run `git stash list` and `git stash apply` in the dotfiles repo.
-  - If `stow` is missing the module falls back to creating per-package symlinks under `/home/embold/.dotfiles/<repo-name>/<package>` so layout is preserved.
+  - If `stow` is missing the module falls back to creating per-package symlinks under `~/.dotfiles/<repo-name>/<package>` so layout is preserved.
 
 ## Publishing
 
