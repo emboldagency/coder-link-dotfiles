@@ -4,6 +4,7 @@ set -euo pipefail
 # Rendered by Terraform. DOTFILES_URIS will be a space-separated list of URIs.
 DOTFILES_URIS="${DOTFILES_URIS}"
 MODE="${MODE}"
+WAIT_SECONDS="${WAIT_SECONDS}"
 # Optional: space-separated list of package specifiers for stow/manual handling.
 # Each item may be a simple package name (e.g. "dotfiles") or an origin:target pair
 # where `origin` is the directory inside the repo and `target` is an optional
@@ -25,7 +26,33 @@ if [ -z "$DOTFILES_URIS" ]; then
 fi
 
 # Ensure base .dotfiles dir exists so symlink/copy ops don't fail
-mkdir -p ~/.dotfiles
+mkdir -p /home/embold/.dotfiles
+
+# Wait for coder to populate ~/.config/coderv2/dotfiles or dotfilesurl if not already present.
+# This prevents racing where the dotfiles are still being cloned/placed by coder.
+if [ -n "$WAIT_SECONDS" ] && [ "$WAIT_SECONDS" -gt 0 ]; then
+  echo "Waiting up to $WAIT_SECONDS seconds for coder dotfiles to appear..."
+  start=$(date +%s)
+  while true; do
+    # Check for populated directory
+    if [ -d /home/embold/.config/coderv2/dotfiles ] && [ "$(ls -A /home/embold/.config/coderv2/dotfiles 2>/dev/null || true)" != "" ]; then
+      echo "Detected /home/embold/.config/coderv2/dotfiles populated"
+      break
+    fi
+    # Check for dotfilesurl file
+    if [ -f /home/embold/.config/coderv2/dotfilesurl ] && [ -s /home/embold/.config/coderv2/dotfilesurl ]; then
+      echo "Detected /home/embold/.config/coderv2/dotfilesurl"
+      break
+    fi
+    now=$(date +%s)
+    elapsed=$((now - start))
+    if [ "$elapsed" -ge "$WAIT_SECONDS" ]; then
+      echo "Timeout waiting for coder dotfiles after $WAIT_SECONDS seconds; continuing"
+      break
+    fi
+    sleep 1
+  done
+fi
 
 if [ -z "$DOTFILES_URIS" ]; then
   echo "No dotfiles URIs provided; nothing to do"
@@ -73,10 +100,10 @@ for uri in $DOTFILES_URIS; do
     path="$uri"
   fi
 
-  # For simplicity assume dotfiles are placed under ~/.dotfiles/<basename>
+  # For simplicity assume dotfiles are placed under /home/embold/.dotfiles/<basename>
   name=$(basename "$path")
   src="$path"
-  dest="~/.dotfiles/$name"
+  dest="/home/embold/.dotfiles/$name"
 
   # Build a package_list value. If PACKAGES is provided use it,
   # otherwise autodetect common package dirs (dotfiles/ or home/).
@@ -116,10 +143,10 @@ for uri in $DOTFILES_URIS; do
             if [[ "$target_spec" = /* ]]; then
               target="$target_spec"
             else
-              target="~/$target_spec"
+              target="/home/embold/$target_spec"
             fi
           else
-            target="~"
+            target="/home/embold"
           fi
           echo "Stowing package '$origin' -> target '$target' (using --adopt to convert existing files)"
           (cd "$stow_target_dir" && stow -v --adopt -t "$target" "$origin") || true
@@ -139,7 +166,7 @@ for uri in $DOTFILES_URIS; do
           fi
         done
       elif [ -n "$package_list" ]; then
-        mkdir -p "~/.dotfiles/$name"
+  mkdir -p "/home/embold/.dotfiles/$name"
         for origin in $package_list; do
           if [[ "$origin" == *:* ]]; then
             origin_dir="$${origin%%:*}"
@@ -147,7 +174,7 @@ for uri in $DOTFILES_URIS; do
             origin_dir="$origin"
           fi
           src_pkg="$path/$origin_dir"
-          dest_pkg="~/.dotfiles/$name/$origin_dir"
+          dest_pkg="/home/embold/.dotfiles/$name/$origin_dir"
           apply_symlink "$src_pkg" "$dest_pkg" || true
         done
       else

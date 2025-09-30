@@ -26,3 +26,9 @@ variable "stow_preserve_changes" {
   type        = bool
   default     = true
 }
+
+variable "wait_seconds" {
+  description = "How many seconds to wait for coder to populate ~/.config/coderv2/dotfiles or dotfilesurl before running link logic. Set to 0 to skip waiting." 
+  type        = number
+  default     = 30
+}
