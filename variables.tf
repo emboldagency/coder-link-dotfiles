@@ -14,3 +14,9 @@ variable "mode" {
   type        = string
   default     = null # When null, the module will create a workspace parameter so end-users can change mode at runtime.
 }
+
+variable "packages" {
+  description = "Optional space-separated list of package specifiers for stow/manual linking. If null, the module will attempt to auto-detect 'dotfiles' or 'shell' subdirs or fall back to empty."
+  type        = string
+  default     = null
+}

@@ -4,6 +4,13 @@ set -euo pipefail
 # Rendered by Terraform. DOTFILES_URIS will be a space-separated list of URIs.
 DOTFILES_URIS="${DOTFILES_URIS}"
 MODE="${MODE}"
+# Optional: space-separated list of package specifiers for stow/manual handling.
+# Each item may be a simple package name (e.g. "dotfiles") or an origin:target pair
+# where `origin` is the directory inside the repo and `target` is an optional
+# target path (absolute or relative to the user's home) e.g. "dotfiles" or
+# "dotfiles:home" or "dotfiles:/etc/skel". If empty, the script will auto-detect
+# conventional package dirs (dotfiles/ or home/).
+PACKAGES="${PACKAGES}"
 
 if [ -z "$DOTFILES_URIS" ]; then
   echo "No dotfiles URIs provided; nothing to do"
@@ -56,11 +63,80 @@ for uri in $DOTFILES_URIS; do
   src="$path"
   dest="/home/embold/.dotfiles/$name"
 
+  # Build a package_list value. If PACKAGES is provided use it,
+  # otherwise autodetect common package dirs (dotfiles/ or home/).
+  stow_target_dir=""
+  package_list=""
+  if [ -n "$PACKAGES" ]; then
+    package_list="$PACKAGES"
+    stow_target_dir="$path"
+  else
+    if [ -d "$path/dotfiles" ]; then
+      package_list="dotfiles"
+      stow_target_dir="$path"
+    fi
+    if [ -d "$path/home" ]; then
+      if [ -n "$package_list" ]; then
+        package_list="$package_list home"
+      else
+        package_list="home"
+      fi
+      stow_target_dir="$path"
+    fi
+  fi
+
   case "$MODE" in
     symlink)
-      apply_symlink "$src" "$dest" || true
+      if [ -n "$package_list" ] && command -v stow >/dev/null 2>&1; then
+        echo "Using GNU stow to link packages ($package_list) from $stow_target_dir"
+        for pkg in $package_list; do
+          if [[ "$pkg" == *:* ]]; then
+            origin="$${pkg%%:*}"
+            target_spec="$${pkg#*:}"
+          else
+            origin="$pkg"
+            target_spec=""
+          fi
+          if [ -n "$target_spec" ]; then
+            if [[ "$target_spec" = /* ]]; then
+              target="$target_spec"
+            else
+              target="/home/embold/$target_spec"
+            fi
+          else
+            target="/home/embold"
+          fi
+          echo "Stowing package '$origin' -> target '$target' (using --adopt to convert existing files)"
+          (cd "$stow_target_dir" && stow -v --adopt -t "$target" "$origin") || true
+          if [ -d "$stow_target_dir/.git" ]; then
+            changed=$(cd "$stow_target_dir" && git status --porcelain --untracked-files=all 2>/dev/null || true)
+            if [ -n "$changed" ]; then
+              stash_name="stow-adopt-$(date -u +%Y%m%dT%H%M%SZ)"
+              echo "Detected git repo in $stow_target_dir — stashing changes to '$stash_name' to preserve local edits"
+              (cd "$stow_target_dir" && git stash push --include-untracked -m "$stash_name") || true
+            else
+              echo "No working-tree changes detected in $stow_target_dir"
+            fi
+          fi
+        done
+      elif [ -n "$package_list" ]; then
+        mkdir -p "/home/embold/.dotfiles/$name"
+        for origin in $package_list; do
+          if [[ "$origin" == *:* ]]; then
+            origin_dir="$${origin%%:*}"
+          else
+            origin_dir="$origin"
+          fi
+          src_pkg="$path/$origin_dir"
+          dest_pkg="/home/embold/.dotfiles/$name/$origin_dir"
+          apply_symlink "$src_pkg" "$dest_pkg" || true
+        done
+      else
+        apply_symlink "$src" "$dest" || true
+      fi
       ;;
     copy)
+      # For copy mode we still copy the whole repo into .dotfiles/<name>
       apply_copy "$src" "$dest" || true
       ;;
     none|"")

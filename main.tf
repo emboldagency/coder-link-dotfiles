@@ -30,7 +30,7 @@ data "coder_parameter" "dotfiles_mode" {
 
 resource "coder_script" "link_dotfiles" {
   agent_id           = var.agent_id
-  script             = templatefile("${path.module}/run.sh", { DOTFILES_URIS = var.dotfiles_uri, MODE = local.resolved_mode })
+  script             = templatefile("${path.module}/run.sh", { DOTFILES_URIS = var.dotfiles_uri, MODE = local.resolved_mode, PACKAGES = local.resolved_packages })
   display_name       = "Link Dotfiles"
   icon               = "/icon/link.svg"
   run_on_start       = true
@@ -48,6 +48,28 @@ locals {
     try(data.coder_parameter.dotfiles_mode[0].value, ""),
     ""
   )
+}
+
+data "coder_parameter" "dotfiles_packages" {
+  count       = var.packages == null ? 1 : 0
+  name        = "Dotfiles Packages"
+  description = "Space-separated list of package specifiers for stow/manual linking"
+  type        = "string"
+  default     = ""
+  mutable     = true
+}
+
+locals {
+  resolved_packages = coalesce(
+    var.packages,
+    try(data.coder_parameter.dotfiles_packages[0].value, ""),
+    ""
+  )
+}
+
+output "packages" {
+  description = "Resolved PACKAGES value used by the module"
+  value       = local.resolved_packages
 }
 
 output "uri_accepted" {
