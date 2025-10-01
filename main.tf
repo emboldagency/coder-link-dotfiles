@@ -60,6 +60,7 @@ data "coder_parameter" "dotfiles_packages" {
   count       = var.packages == null ? 1 : 0
   name        = "Dotfiles Packages"
   description = "Space-separated list of package specifiers for stow/manual linking"
+  icon        = "/icon/dotfiles.svg"
   type        = "string"
   default     = ""
   mutable     = true
