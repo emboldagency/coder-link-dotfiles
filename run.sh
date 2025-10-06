@@ -2,10 +2,16 @@
 set -euo pipefail
 
 # DOTFILES_URL is supplied by the Coder dotfiles module.
-# Safely read environment variables with sensible defaults so script works with -u
-DOTFILES_URL="${DOTFILES_URL:-}"
-MODE="${MODE:-symlink}"
-WAIT_SECONDS="${WAIT_SECONDS:-0}"
+# Safely read values passed into the template from Terraform. The template
+# provides DOTFILES_URIS, MODE, PACKAGES, PRESERVE_STASH, and WAIT_SECONDS.
+# These are substituted by Terraform at template render time.
+# Prefer DOTFILES_URI (used by Coder's dotfiles module). If DOTFILES_URI is
+# empty at template render time, allow the runtime environment to supply
+# DOTFILES_URI (for example when the script is executed directly) or fall
+# back to the local ~/.config/coderv2/dotfilesurl file / local clone.
+DOTFILES_URL="${DOTFILES_URI}"
+MODE="${MODE}"
+WAIT_SECONDS="${WAIT_SECONDS}"
 # Optional: space-separated list of package specifiers for stow/manual handling.
 # Each item may be a simple package name (e.g. "dotfiles") or an origin:target pair
 # where `origin` is the directory inside the repo and `target` is an optional
@@ -14,59 +20,40 @@ WAIT_SECONDS="${WAIT_SECONDS:-0}"
 # conventional package dirs (dotfiles/ or home/).
 PACKAGES="${PACKAGES}"
 
-# If DOTFILES_URL is empty, try a conventional dotfilesurl file which may
-# contain a single URI (this exists in some images as ~/.config/coderv2/dotfilesurl).
+# Require DOTFILES_URI from the Coder module. If it's not provided the module
+# didn't supply a dotfiles repo and there's nothing for this script to do.
 if [ -z "$DOTFILES_URL" ]; then
-  if [ -f ~/.config/coderv2/dotfilesurl ]; then
-    DOTFILES_URL=$(cat ~/.config/coderv2/dotfilesurl)
-    echo "Using DOTFILES_URL from ~/.config/coderv2/dotfilesurl: $DOTFILES_URL"
-  fi
+  echo "No DOTFILES_URI provided by module; nothing to do"
+  exit 0
 fi
 
-# Ensure base coder config dir exists so symlink/copy ops don't fail
-mkdir -p "$HOME/.config/coderv2"
-
-# Wait for coder to populate ~/.config/coderv2/dotfiles or dotfilesurl if not already present.
-# This prevents racing where the dotfiles are still being cloned/placed by coder.
+# Wait for coder to clone the dotfiles repo into ~/.config/coderv2/dotfiles
+# Prefer the local clone when present; if it doesn't appear within WAIT_SECONDS
+# we'll exit because there's nothing to work on.
 if [ -n "$WAIT_SECONDS" ] && [ "$WAIT_SECONDS" -gt 0 ]; then
-  echo "Waiting up to $WAIT_SECONDS seconds for coder dotfiles to appear..."
+  echo "Waiting up to $WAIT_SECONDS seconds for coder to populate ~/.config/coderv2/dotfiles..."
   start=$(date +%s)
   while true; do
-    # Check for populated directory
-    if [ -d ~/.config/coderv2/dotfiles ] && [ "$(ls -A ~/.config/coderv2/dotfiles 2>/dev/null || true)" != "" ]; then
-      echo "Detected ~/.config/coderv2/dotfiles populated"
-      break
-    fi
-    # Check for dotfilesurl file
-    if [ -f ~/.config/coderv2/dotfilesurl ] && [ -s ~/.config/coderv2/dotfilesurl ]; then
-      echo "Detected ~/.config/coderv2/dotfilesurl"
+    if [ -d "$HOME/.config/coderv2/dotfiles" ] && [ "$(ls -A "$HOME/.config/coderv2/dotfiles" 2>/dev/null || true)" != "" ]; then
+      echo "Detected local coder clone at ~/.config/coderv2/dotfiles; using that"
+      DOTFILES_URL="$HOME/.config/coderv2/dotfiles"
       break
     fi
     now=$(date +%s)
     elapsed=$((now - start))
     if [ "$elapsed" -ge "$WAIT_SECONDS" ]; then
-      echo "Timeout waiting for coder dotfiles after $WAIT_SECONDS seconds; continuing"
-      break
+      echo "Timeout waiting for local clone after $WAIT_SECONDS seconds; nothing to do"
+      exit 0
     fi
     sleep 1
   done
-fi
-
-# If DOTFILES_URL wasn't provided via env, prefer coder's local clone location
-# (coder typically clones the configured repo under $HOME/.config/coderv2/dotfiles).
-if [ -z "$DOTFILES_URL" ]; then
+else
+  # No wait requested: prefer local clone if present, otherwise exit
   if [ -d "$HOME/.config/coderv2/dotfiles" ] && [ "$(ls -A "$HOME/.config/coderv2/dotfiles" 2>/dev/null || true)" != "" ]; then
     DOTFILES_URL="$HOME/.config/coderv2/dotfiles"
-    echo "Using local coder clone at $DOTFILES_URL"
   else
-    # If no DOTFILES_URL and no local clone, check for dotfilesurl file one more time
-    if [ -f "$HOME/.config/coderv2/dotfilesurl" ] && [ -s "$HOME/.config/coderv2/dotfilesurl" ]; then
-      DOTFILES_URL=$(cat "$HOME/.config/coderv2/dotfilesurl")
-      echo "Using DOTFILES_URL from ~/.config/coderv2/dotfilesurl: $DOTFILES_URL"
-    else
-      echo "No dotfiles URL or local clone found; nothing to do"
-      exit 0
-    fi
+    echo "No local coder clone present and WAIT_SECONDS=0; nothing to do"
+    exit 0
   fi
 fi
 
@@ -108,8 +95,14 @@ else
   path="$DOTFILES_URL"
 fi
 
-# Expand leading ~ to $HOME (safe replacement)
-path="${path/#~/$HOME}"
+# Expand leading ~ to $HOME (safe replacement) without using bash's
+# `$${var/pattern/replacement}` form which interferes with Terraform's
+# templatefile interpolation. Use a simple test + substring instead.
+if [[ "$path" = ~* ]]; then
+  # remove leading ~ and prepend $HOME (avoid bash $${var:offset} which Terraform may
+  # try to interpret during template rendering). Use command substitution instead.
+  path="$HOME$(printf '%s' "$path" | cut -c2-)"
+fi
 
 # For simplicity assume coder clones repo into $HOME/.config/coderv2/dotfiles.
 # If DOTFILES_URL is a remote URI, prefer the local clone at that location.

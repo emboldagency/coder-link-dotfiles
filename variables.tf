@@ -4,7 +4,12 @@ variable "agent_id" {
 }
 
 variable "dotfiles_uri" {
-  description = "Dotfiles URI (from the dotfiles module) to apply"
+  description = <<-EOT
+Dotfiles URI to apply. This module expects the caller to pass the
+`dotfiles_uri` output from the Coder dotfiles module (for example:
+`module.dotfiles.dotfiles_uri`). If you don't have a value to pass,
+leave the default empty string and the script will no-op at runtime.
+EOT
   type        = string
   default     = ""
 }
