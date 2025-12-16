@@ -6,6 +6,18 @@ terraform {
   }
 }
 
+data "coder_parameter" "dotfiles_uri" {
+  count        = var.dotfiles_uri == null ? 1 : 0
+  type         = "string"
+  name         = "dotfiles_uri"
+  display_name = "Dotfiles URL"
+  order        = var.coder_parameter_order
+  default      = var.default_dotfiles_uri
+  description  = var.description
+  mutable      = true
+  icon         = "/icon/dotfiles.svg"
+}
+
 data "coder_parameter" "dotfiles_mode" {
   count       = var.mode == null ? 1 : 0
   name        = "Dotfiles Mode"
@@ -27,35 +39,6 @@ data "coder_parameter" "dotfiles_mode" {
   }
 }
 
-
-resource "coder_script" "link_dotfiles" {
-  agent_id           = var.agent_id
-  script             = templatefile("${path.module}/run.sh", { DOTFILES_URI = var.dotfiles_uri, MODE = local.resolved_mode, PACKAGES = local.resolved_packages, PRESERVE_STASH = var.stow_preserve_changes, WAIT_SECONDS = var.wait_seconds })
-  display_name       = "Link Dotfiles"
-  icon               = "/icon/dotfiles.svg"
-  run_on_start       = true
-  start_blocks_login = false
-}
-
-output "mode" {
-  description = "Resolved mode for applying dotfiles"
-  value       = local.resolved_mode
-}
-
-locals {
-  # Prefer the first non-empty value among the explicit var, the workspace
-  # parameter (if present), or empty string. Use trimspace checks because
-  # coalesce() treats empty string as a valid value which is undesirable here.
-  # Avoid calling coalesce() when var.mode is null which can lead to an
-  # error inside downstream 'trimspace' calls. Prefer explicit null checks
-  # and trimspace the first non-empty string value.
-  resolved_mode = (
-    var.mode != null && trimspace(var.mode) != "" ? trimspace(var.mode) : (
-      (try(data.coder_parameter.dotfiles_mode[0].value, "") != "" && trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) != "") ? trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) : ""
-    )
-  )
-}
-
 data "coder_parameter" "dotfiles_packages" {
   count       = var.packages == null ? 1 : 0
   name        = "Dotfiles Packages"
@@ -67,14 +50,47 @@ data "coder_parameter" "dotfiles_packages" {
 }
 
 locals {
-  # coalesce() treats empty string as a value; we need to prefer non-empty
-  # strings. Use trimspace() and conditional checks to return the first
-  # non-empty value or empty string when none provided.
+  dotfiles_uri = var.dotfiles_uri != null ? var.dotfiles_uri : data.coder_parameter.dotfiles_uri[0].value
+  user         = var.user != null ? var.user : ""
+
+  # Prefer the first non-empty value among the explicit var, the workspace
+  # parameter (if present), or empty string.
+  resolved_mode = (
+    var.mode != null && trimspace(var.mode) != "" ? trimspace(var.mode) : (
+      (try(data.coder_parameter.dotfiles_mode[0].value, "") != "" && trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) != "") ? trimspace(try(data.coder_parameter.dotfiles_mode[0].value, "")) : ""
+    )
+  )
+
   resolved_packages = (
     var.packages != null && trimspace(var.packages) != "" ? trimspace(var.packages) : (
       (try(data.coder_parameter.dotfiles_packages[0].value, "") != "" && trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) != "") ? trimspace(try(data.coder_parameter.dotfiles_packages[0].value, "")) : ""
     )
   )
+}
+
+resource "coder_script" "link_dotfiles" {
+  agent_id = var.agent_id
+  display_name       = "Link Dotfiles"
+  icon               = "/icon/dotfiles.svg"
+  run_on_start       = true
+  start_blocks_login = false
+  script = templatefile("${path.module}/run.sh", {
+    DOTFILES_URI   = local.dotfiles_uri,
+    MODE           = local.resolved_mode,
+    PACKAGES       = local.resolved_packages,
+    PRESERVE_STASH = tostring(var.stow_preserve_changes), 
+    DOTFILES_USER  = local.user
+  })
+}
+
+output "dotfiles_uri" {
+  description = "Dotfiles URI"
+  value       = local.dotfiles_uri
+}
+
+output "mode" {
+  description = "Resolved mode for applying dotfiles"
+  value       = local.resolved_mode
 }
 
 output "packages" {
