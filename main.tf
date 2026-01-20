@@ -23,7 +23,7 @@ data "coder_parameter" "dotfiles_mode" {
   name        = "Dotfiles Mode"
   description = "How should embedded dotfiles be applied?"
   type        = "string"
-  default     = "symlink"
+  default     = "none"
   mutable     = true
   option {
     name  = "Symlink"
