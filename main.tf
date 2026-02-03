@@ -25,6 +25,7 @@ data "coder_parameter" "dotfiles_mode" {
   type        = "string"
   default     = "none"
   mutable     = true
+  icon        = "/icon/dotfiles.svg"
   option {
     name  = "Symlink"
     value = "symlink"
@@ -69,7 +70,7 @@ locals {
 }
 
 resource "coder_script" "link_dotfiles" {
-  agent_id = var.agent_id
+  agent_id           = var.agent_id
   display_name       = "Link Dotfiles"
   icon               = "/icon/dotfiles.svg"
   run_on_start       = true
@@ -78,7 +79,7 @@ resource "coder_script" "link_dotfiles" {
     DOTFILES_URI   = local.dotfiles_uri,
     MODE           = local.resolved_mode,
     PACKAGES       = local.resolved_packages,
-    PRESERVE_STASH = tostring(var.stow_preserve_changes), 
+    PRESERVE_STASH = tostring(var.stow_preserve_changes),
     DOTFILES_USER  = local.user
   })
 }
