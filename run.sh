@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ------------------------------------------------------------------------------
-# 1. Configuration & Variables
+# Configuration & Variables
 # ------------------------------------------------------------------------------
 
 # Terraform variables
@@ -13,7 +13,7 @@ DOTFILES_USER="${DOTFILES_USER}"
 STOW_PRESERVE="${PRESERVE_STASH}"
 
 # ------------------------------------------------------------------------------
-# 2. User Switching Logic
+# User Switching Logic
 # ------------------------------------------------------------------------------
 
 if [ -n "$DOTFILES_USER" ] && [ "$DOTFILES_USER" != "$(whoami)" ]; then
@@ -32,7 +32,7 @@ if [ -n "$DOTFILES_USER" ] && [ "$DOTFILES_USER" != "$(whoami)" ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 3. Define Directories
+# Define Directories
 # ------------------------------------------------------------------------------
 
 REPO_DIR="$HOME/.config/coderv2/dotfiles"
@@ -42,7 +42,7 @@ LOG_FILE="$HOME/.dotfiles.log"
   echo "--- Starting Dotfiles Link ($(date)) ---"
 
   # ------------------------------------------------------------------------------
-  # 4. Pre-Flight: Handle Dirty State
+  # Pre-Flight: Handle Dirty State
   # ------------------------------------------------------------------------------
   # If the repo is dirty, `coder dotfiles` (which uses git pull) might fail.
   # We clean it up first so the official command succeeds.
@@ -57,22 +57,22 @@ LOG_FILE="$HOME/.dotfiles.log"
   fi
 
   # ------------------------------------------------------------------------------
-  # 5. Core Logic: Run Coder Dotfiles
+  # Core Logic: Run Coder Dotfiles
   # ------------------------------------------------------------------------------
   
   if [ -n "$DOTFILES_URL" ]; then
     echo "Running coder dotfiles logic for $DOTFILES_URL..."
     coder dotfiles "$DOTFILES_URL" -y
   else
-    echo "No DOTFILES_URI provided. Skipping coder dotfiles command."
+    echo "⏭️ No DOTFILES_URI provided. Skipping coder dotfiles command."
     if [ ! -d "$REPO_DIR" ]; then
-        echo "No local repo found at $REPO_DIR. Exiting."
+        echo "⏭️ No local repo found at $REPO_DIR. Exiting."
         exit 0
     fi
   fi
 
   # ------------------------------------------------------------------------------
-  # 6. Link/Install Logic (Stow Support)
+  # Link/Install Logic (Stow Support)
   # ------------------------------------------------------------------------------
 
   path="$REPO_DIR"
@@ -148,10 +148,10 @@ LOG_FILE="$HOME/.dotfiles.log"
     apply_copy "$path" "$dest"
     ;;
   none)
-    echo "Mode set to none. Skipping linking."
+    echo "⏭️ Mode set to none. Skipping linking."
     ;;
   *)
-    echo "Unknown mode: $MODE"
+    echo "⚠️ Unknown mode: $MODE"
     ;;
   esac
 
