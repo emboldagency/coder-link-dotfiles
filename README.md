@@ -25,7 +25,7 @@ Do **not** use the standard `coder/dotfiles` module. Use this module directly.
 module "link_dotfiles" {
   source       = "git::[https://github.com/emboldagency/coder-link-dotfiles.git?ref=v1.0.1](https://github.com/emboldagency/coder-link-dotfiles.git?ref=v1.0.1)"
   agent_id     = coder_agent.main.id
-  dotfiles_uri = data.coder_parameter.dotfiles_url.value
+  dotfiles_uri = data.coder_parameter.dotfiles_uri.value
 
   # Optional overrides
   # user                  = "root"
