@@ -1,5 +1,9 @@
 # Link Dotfiles module
 
+> [!CAUTION]
+> **DEPRECATION NOTICE:** This standalone repository is no longer maintained.
+> The **coder terraform module** has been migrated to: [**coder-registry**](https://github.com/emboldagency/coder-registry).
+
 A comprehensive Coder module that clones a dotfiles repository and applies them using GNU Stow or custom symlinking strategies.
 
 **Note:** This module replaces the standard Coder dotfiles module. It handles the full lifecycle (Clone -> Clean -> Link) to prevent race conditions common when using separate clone and link steps.
